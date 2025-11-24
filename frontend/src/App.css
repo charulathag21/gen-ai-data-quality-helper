@@ -1,0 +1,444 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+  font-family: Arial;
+}
+
+.upload-box {
+  margin: 20px 0;
+}
+
+button {
+  padding: 10px 20px;
+  margin-top: 10px;
+}
+
+pre {
+  background: #f3f3f3;
+  padding: 10px;
+  border-radius: 8px;
+}
+.error {
+  color: red;
+  font-weight: bold;
+}
+
+.table-section {
+  margin-bottom: 25px;
+}
+
+.dq-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.dq-table th,
+.dq-table td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+}
+
+.dq-table th:first-child,
+.dq-table td:first-child {
+  text-align: left;
+}
+
+.dq-table th:last-child,
+.dq-table td:last-child {
+  text-align: center;
+}
+
+
+.scroll-box {
+  max-height: 250px; /* Medium height */
+  overflow-y: auto;
+  border: 1px solid #ddd;
+}
+
+/* Container for all sections */
+.dq-container {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+/* Title for each section */
+.table-section h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* Full-width scrollable table section */
+.scroll-table {
+  max-height: 250px;
+  overflow-y: auto;
+  overflow-x: auto; 
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  display: block;
+}
+
+
+/* Table formatting */
+.dq-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* keeps same width columns */
+}
+
+/* Table header */
+.dq-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #e6e6e6; /* light grey */
+  padding: 10px;
+  border-bottom: 2px solid #999;
+  font-weight: bold;
+}
+
+/* Table cells */
+.dq-table td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  word-wrap: break-word;
+}
+
+/* Section spacing */
+.table-section {
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+/* If no values exist */
+.empty-message {
+  padding: 10px;
+  color: #555;
+  background: #f8f8f8;
+  border-left: 3px solid #28a745;
+}
+/* Sticky top header */
+.dq-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #e6e6e6;
+  padding: 10px;
+  border-bottom: 2px solid #999;
+  font-weight: bold;
+}
+
+.auth-container {
+  width: 420px;
+  margin: 40px auto;
+  padding: 25px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.auth-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.auth-tab {
+  padding: 8px 18px;
+  border: 1px solid #bbb;
+  background: #f2f2f2;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.auth-tab.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.auth-form-group {
+  margin-bottom: 15px;
+}
+
+.auth-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 10px;
+  background: #007bff;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.auth-submit-btn:hover {
+  background: #0056c7;
+}
+
+.status-text {
+  position: absolute;
+  top: 20px;
+  right: 40px;
+  font-size: 15px;
+  color: #444;
+}
+
+.upload-page-container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 20px;
+}
+
+.report-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.report-content {
+  margin-top: 20px;
+}
+
+.dq-table td:first-child {
+  width: 35%;
+  font-weight: 600; /* makes key column look like a header */
+}
+
+.dq-table td:last-child {
+  width: 65%;
+}
+
+/* ---------- GLOBAL PAGE BACKGROUND ---------- */
+body {
+  background: #f5f7fa;   /* soft grey */
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ---------- PAGE CONTAINER ---------- */
+.page-wrapper {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* ---------- REPORT SECTION ---------- */
+.report-container {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+  margin-top: 25px;
+}
+
+/* ---------- TABLE LOOK ---------- */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.report-table th {
+  background: #e9ecef;
+  padding: 10px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.report-table td {
+  background: #fff;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+/* Scroll bars looking better */
+::-webkit-scrollbar {
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e0e0e0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* MAIN PAGE WRAPPER */
+.page-wrapper {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+/* UPLOAD BOX CARD */
+.upload-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+/* REPORT BOX */
+/* .report-container {
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 14px;
+  box-shadow: 0px 2px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+} */
+
+/* ======== NAVBAR (DARK GREY, CLEAN LOOK) ======== */
+nav {
+  background: black !important;
+  padding: 14px 24px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+nav a {
+  color: white !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+}
+
+nav button {
+  background: white !important;
+  color: #2f2f2f !important;
+  border: 1px solid #ccc !important;
+  padding: 10px 22px !important;
+  margin : 0px 40px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+
+/* ======== FIX PAGE WIDTH & CENTERING ======== */
+.upload-page-container {
+  max-width: 1100px !important;
+  margin: 30px auto !important;
+  padding: 20px !important;
+}
+
+/* Wider white card look */
+.report-container {
+  max-width: 1100px !important;
+  padding: 35px !important;
+  border-radius: 14px !important;
+  box-shadow: 0px 2px 12px rgba(0,0,0,0.08) !important;
+  background: #fff !important;
+}
+
+
+/* ======== CENTER UPLOAD AREA ======== */
+.upload-box {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 15px !important;
+  margin-bottom: 25px !important;
+}
+
+
+/* ======== BUTTON STYLE CONSISTENCY ======== */
+button {
+  padding: 8px 18px !important;
+  background: #2f2f2f !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #000 !important;
+}
+
+
+/* ======== REMOVE HORIZONTAL PAGE SCROLL ======== */
+html, body {
+  overflow-x: hidden !important;
+}
+
+.small-note {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+
+
+
+
+
