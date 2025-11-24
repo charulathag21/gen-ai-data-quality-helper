@@ -1,7 +1,8 @@
 # Gen AI Data Quality Helper (CSV)
 
 **Frontend URL** = https://gen-ai-data-quality-helper.netlify.app 
-**Backend API URL (FastAPI on Hugging Face Spaces)** = https://charulathag21-gen-ai-data-quality-helper.hf.space  
+**Backend API URL (FastAPI on Hugging Face Spaces)** = https://charulathag21-gen-ai-data-quality-helper.hf.space
+**GitHub link** = https://github.com/charulathag21/gen-ai-data-quality-helper 
 
 
 ## 1. Overview & Problem Statement
