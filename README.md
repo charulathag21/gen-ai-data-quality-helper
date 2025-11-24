@@ -124,7 +124,7 @@ venv\Scripts\activate   # on Windows
 pip install -r requirements.txt
 
 # Set your Groq API key (Windows PowerShell example)
-setx GROQ_API_KEY "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"
+setx GROQ_API_KEY "your_token"
 
 ### Running on Hugging Face Spaces (Docker)
 This Space uses a Dockerfile to run FastAPI:
