@@ -14,11 +14,12 @@ SECRET_KEY = "e34a2d81b66f4c79932c9cc46e6e1199cbb80860af6e12d4fa3f5ec1c706ae3f"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-USERS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "src", "data", "users.json")
+USERS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "users.json")
 USERS_FILE = os.path.abspath(USERS_FILE)
 
 
@@ -95,13 +96,6 @@ async def signup(user: UserCreate):
 
     if user.username in users:
         raise HTTPException(status_code=400, detail="Username already exists.")
-
-    # bcrypt cannot hash >72 bytes
-    if len(user.password.encode("utf-8")) > 72:
-        raise HTTPException(
-            status_code=400,
-            detail="Password too long. Must be less than 72 characters."
-        )
 
     hashed_pw = get_password_hash(user.password)
 

@@ -1,3 +1,14 @@
+---
+title: Gen AI Data Quality Helper
+emoji: 🧠
+colorFrom: purple
+colorTo: pink
+sdk: docker
+app_file: Dockerfile
+pinned: false
+---
+
+
 # Gen AI Data Quality Helper (CSV)
 
 **Frontend URL** = https://gen-ai-data-quality-helper.netlify.app 
@@ -30,7 +41,7 @@ This project is a **GenAI-powered Data Quality Helper** that lets a user upload 
 
 - **Frontend:** React.js (Create React App)
 - **Backend:** FastAPI
-- **Authentication:** JWT-based Signup + Login (username + password, hashed with bcrypt)
+- **Authentication:** JWT-based Signup + Login (username + password)
 - **GenAI / LLM:**
   - Groq API (`llama-3.1-8b-instant`)
   - LangChain `ChatGroq` + `ChatPromptTemplate`

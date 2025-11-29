@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const API_BASE = "https://gen-ai-data-quality-helper-backend.hf.space";
+const API_BASE = "https://charulathag21-gen-ai-data-quality-helper.hf.space";
 
 const FileUpload = ({ setReport }) => {
   const [file, setFile] = useState(null);

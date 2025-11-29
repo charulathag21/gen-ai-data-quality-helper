@@ -2,6 +2,8 @@ import React from "react";
 import Charts from "./Charts.jsx";
 import DataQualityViewer from "./DataQualityViewer.jsx";
 
+const API_BASE = "https://charulathag21-gen-ai-data-quality-helper.hf.space";
+
 const Report = ({ data }) => {
 
   // Download JSON file
@@ -38,9 +40,10 @@ const Report = ({ data }) => {
     )}
 
     <h3>⬇ Download Cleaned File</h3>
-    <a href={`http://127.0.0.1:8000${data.cleaned_file_download}`} download>
+    <a href={`${API_BASE}${data.cleaned_file_download}`} download>
       <button>Download Cleaned CSV</button>
     </a>
+
 
     <h3>⬇ Developer JSON Report</h3>
     <button onClick={downloadJSON}>Download JSON Report</button>
