@@ -1,359 +1,274 @@
 # backend/src/services/llm_helper.py
 import os
 import json
-import re
 from typing import List, Dict, Any, Optional, Tuple
 
-# NOTE: adjust imports if your langchain_groq package differs
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
-# ----------------- Logging helper -----------------
-def _log(*args):
-    # simple wrapper so we can control logging from one place
-    print(*args)
-
-
-# ----------------- JSON extraction helpers -----------------
-def extract_balanced_json(text: str) -> Optional[str]:
-    """
-    Find the first balanced JSON array or object in text.
-    Handles nested brackets/braces and common wrappers like ```json ... ```
-    Returns the substring (including outer [] or {}) or None.
-    """
-    if not text:
-        return None
-
-    # remove common triple-backtick blocks but keep inner text
-    # e.g. ```json\n{...}\n```
-    cleaned = text.strip()
-    # if code fences exist, prefer content inside them
-    fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", cleaned, flags=re.S | re.I)
-    if fence_match:
-        candidate = fence_match.group(1).strip()
-        # try to parse candidate directly later
-        cleaned = candidate
-
-    # find first '[' or '{' and then match balanced block
-    first_open = None
-    for i, ch in enumerate(cleaned):
-        if ch == "[" or ch == "{":
-            first_open = i
-            open_ch = ch
-            close_ch = "]" if ch == "[" else "}"
-            break
-
-    if first_open is None:
-        return None
-
-    depth = 0
-    for j in range(first_open, len(cleaned)):
-        c = cleaned[j]
-        if c == open_ch:
-            depth += 1
-        elif c == close_ch:
-            depth -= 1
-            if depth == 0:
-                # return the balanced block
-                return cleaned[first_open:j + 1]
-
-    return None
-
-
-def parse_json_safe(raw_text: str) -> Optional[Any]:
-    """
-    Try json.loads normally. If that fails, try to extract a balanced JSON block.
-    Returns parsed object or None.
-    """
-    if raw_text is None:
-        return None
-
-    txt = raw_text.strip()
-    # quick attempt
-    try:
-        return json.loads(txt)
-    except Exception:
-        pass
-
-    # attempt to remove surrounding code fences
-    fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", txt, flags=re.S | re.I)
-    if fence_match:
-        txt = fence_match.group(1).strip()
-        try:
-            return json.loads(txt)
-        except Exception:
-            pass
-
-    # find first balanced JSON block and parse it
-    jblock = extract_balanced_json(txt)
-    if jblock:
-        try:
-            return json.loads(jblock)
-        except Exception as e:
-            _log("parse_json_safe: json.loads failed on extracted block:", e, "BLOCK:", jblock[:200])
-            return None
-
-    # try to salvage by finding first { ... } or [ ... ] groups with regex fallback
-    obj_match = re.search(r"(\{[\s\S]*\})", txt)
-    if obj_match:
-        try:
-            return json.loads(obj_match.group(1))
-        except Exception:
-            pass
-
-    arr_match = re.search(r"(\[[\s\S]*\])", txt)
-    if arr_match:
-        try:
-            return json.loads(arr_match.group(1))
-        except Exception:
-            pass
-
-    # give up
-    return None
-
-
-# ----------------- LLM (Groq) initialization -----------------
+# Config / LLM client
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    _log("⚠️ GROQ_API_KEY not set in environment variables. LLM calls will likely fail.")
+    print("⚠️ GROQ_API_KEY not found in environment variables!")
 
 LLM_MODEL = "llama-3.1-8b-instant"
 
-# Create a single client instance with API key if available
-try:
-    if GROQ_API_KEY:
-        llm = ChatGroq(temperature=0.2, model_name=LLM_MODEL, api_key=GROQ_API_KEY)
-    else:
-        # still create client without api_key (will error at call)
-        llm = ChatGroq(temperature=0.2, model_name=LLM_MODEL)
-except Exception as e:
-    llm = None
-    _log("Failed to create ChatGroq client:", e)
+# Create a default llm instance; pass api_key if available
+llm_kwargs = {"temperature": 0.2, "model_name": LLM_MODEL}
+if GROQ_API_KEY:
+    llm_kwargs["api_key"] = GROQ_API_KEY
+
+llm = ChatGroq(**llm_kwargs)
 
 
-# ----------------- Main function: corrections for emails/dates/phones -----------------
-def get_llm_corrections(issues: List[Dict[str, Any]]) -> Dict[str, Dict[int, Dict[str, Any]]]:
+# Helpers for JSON extraction
+def _extract_first_balanced(text: str, open_ch: str, close_ch: str) -> Optional[str]:
     """
-    issues: list of dicts like:
-      { "id": int, "issue_type": "invalid_email"|"invalid_date"|"invalid_phone",
-        "column": str, "row_index": int, "value": str }
-
-    returns:
-      {
-        "email": { row_index: { original, suggestion, confidence, reason } },
-        "date":  { ... },
-        "phone": { ... }
-      }
+    Find the first balanced substring starting with open_ch and ending
+    with its matching close_ch. Returns the substring including brackets/braces,
+    or None if not found.
+    This correctly handles nested braces/brackets.
     """
+    start = text.find(open_ch)
+    if start == -1:
+        return None
 
-    default_out = {"email": {}, "date": {}, "phone": {}}
-    if not issues:
-        return default_out
+    depth = 0
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == open_ch:
+            depth += 1
+        elif ch == close_ch:
+            depth -= 1
 
-    if llm is None:
-        _log("LLM client not initialized; skipping corrections.")
-        return default_out
+        # When depth hits zero we've found the matching closing char
+        if depth == 0:
+            return text[start : i + 1]
+    return None
+
+
+def _extract_json_array(text: str) -> Optional[str]:
+    # Try to extract a JSON array ([...] )
+    return _extract_first_balanced(text, "[", "]")
+
+
+def _extract_json_object(text: str) -> Optional[str]:
+    # Try to extract a JSON object ({...})
+    return _extract_first_balanced(text, "{", "}")
+
+
+def _safe_json_load(s: str) -> Any:
+    """Try json.loads and raise original exception for caller to handle."""
+    return json.loads(s)
+
+
+# Main function: corrections for email/date/phone
+def get_llm_corrections(issues: List[Dict[str, Any]]):
+    # If no issues, skip LLM entirely (prevents '"id"' errors)
+    if not issues or len(issues) == 0:
+        return {"email": {}, "date": {}, "phone": {}}
+
 
     limited = issues[:50]
+
+    # SAFE GUARD:
+    if len(limited) == 0:
+        return {"email": {}, "date": {}, "phone": {}}
+
     issues_json = json.dumps(limited, ensure_ascii=False)
 
-    # Build prompt
+    # STRONGER SYSTEM MESSAGE TO FORCE CLEAN JSON ARRAY
     prompt = ChatPromptTemplate.from_messages([
-        ("system",
-         "You are a strict JSON-only data cleaning assistant. You always output EXACT JSON (array only). No backticks, no explanations, no text outside JSON."),
-        ("user", f"""
-You receive a list of issues:
+        (
+            "system",
+            "You output ONLY valid JSON array (no text, no explanations, no markdown). "
+            "If no corrections are needed, return an empty array: []. "
+            "Do not include ```json or any non-JSON characters."
+        ),
+        (
+            "user",
+    f"""
+    Here is the list of issues:
 
-{issues_json}
+    {issues_json}
 
-Each issue contains:
-- id
-- issue_type (invalid_email, invalid_date, invalid_phone)
-- column
-- row_index
-- value
+    Return STRICT JSON array only, shaped like:
 
-Return STRICT JSON array in this shape:
+    [
+    {{
+        "id": <id>,
+        "suggestion": "<corrected_value>",
+        "confidence": "high|medium|low",
+        "reason": "<short explanation>"
+    }}
+    ]
 
-[
-  {{
-    "id": <id>,
-    "suggestion": "<corrected_value>",
-    "confidence": "<high|medium|low>",
-    "reason": "<short explanation>"
-  }},
-  ...
-]
+    RULES:
+    - Emails: fix typos only.
+    - Dates: convert to YYYY-MM-DD.
+    - Phone numbers: convert to +international format.
+    - DO NOT output anything outside the JSON array.
+    """
+            )
+        ])
 
-IMPORTANT:
-- Emails: fix typos only (e.g. user[at]example.com -> user@example.com).
-- Dates: convert to YYYY-MM-DD when possible.
-- Phone: convert to +international format if you can infer country; otherwise leave suggestion empty.
-- Output JSON array only. Do not return any explanatory text.
-""")
-    ])
-
+    # CALL LLM
     try:
-        messages = prompt.format_messages()
-        # format_messages may accept kwargs depending on version; we already injected issues_json into the user message above.
-        response = llm.invoke(messages)
+        response = llm.invoke(prompt.format_messages())
         raw_text = getattr(response, "content", str(response)).strip()
     except Exception as e:
-        _log("LLM call failed:", e)
-        return default_out
+        print("LLM call failed (corrections):", e)
+        return {"email": {}, "date": {}, "phone": {}}
 
-    parsed = parse_json_safe(raw_text)
-    if parsed is None:
-        _log("JSON parse error for LLM corrections. RAW:", raw_text[:1000])
-        return default_out
+    # 1st extraction: array-level extraction
+    arr = _extract_json_array(raw_text)
 
-    # Parsed expected to be list
-    if not isinstance(parsed, list):
-        _log("LLM returned JSON but not a list for corrections. TYPE:", type(parsed), "VALUE:", str(parsed)[:200])
-        return default_out
+    # 2nd fallback: try to wrap single objects into array
+    if not arr:
+        # maybe the model returned `{ "id": ... }`
+        obj = _extract_json_object(raw_text)
+        if obj:
+            arr = f"[{obj}]"
 
-    # build mapping from id -> original issue
-    orig_map = {item["id"]: item for item in limited if "id" in item}
+    if not arr:
+        print("Corrections JSON parse error: No JSON found. RAW:", raw_text)
+        return {"email": {}, "date": {}, "phone": {}}
 
-    out = {"email": {}, "date": {}, "phone": {}}
+    # PARSE JSON
+    try:
+        parsed = json.loads(arr)
+        if not isinstance(parsed, list):
+            parsed = [parsed]
+    except Exception as e:
+        print("Corrections JSON decode error:", e, "RAW:", raw_text)
+        return {"email": {}, "date": {}, "phone": {}}
+
+    # BUILD FINAL STRUCTURE
+    by_type = {"email": {}, "date": {}, "phone": {}}
+    orig_map = {item["id"]: item for item in limited}
+
     for item in parsed:
         try:
-            if not isinstance(item, dict):
-                continue
             issue_id = item.get("id")
-            if issue_id is None:
-                continue
             orig = orig_map.get(issue_id)
             if not orig:
                 continue
 
-            suggestion = item.get("suggestion", "").strip()
-            confidence = str(item.get("confidence", "medium")).lower()
-            reason = str(item.get("reason", "")).strip()
-
+            category = orig["issue_type"]
+            row = orig["row_index"]
             entry = {
-                "original": orig.get("value"),
-                "suggestion": suggestion,
-                "confidence": confidence,
-                "reason": reason
+                "original": orig["value"],
+                "suggestion": item.get("suggestion", ""),
+                "confidence": item.get("confidence", "medium"),
+                "reason": item.get("reason", "")
             }
 
-            cat = orig.get("issue_type")
-            if cat == "invalid_email":
-                out["email"][orig.get("row_index")] = entry
-            elif cat == "invalid_date":
-                out["date"][orig.get("row_index")] = entry
-            elif cat == "invalid_phone":
-                out["phone"][orig.get("row_index")] = entry
+            if category == "invalid_email":
+                by_type["email"][row] = entry
+            elif category == "invalid_date":
+                by_type["date"][row] = entry
+            elif category == "invalid_phone":
+                by_type["phone"][row] = entry
 
         except Exception as e:
-            _log("Error processing LLM item:", e, "ITEM:", item)
+            print("Corrections mapping error:", e, item)
 
-    return out
+    return by_type
 
 
-# ----------------- Category inconsistency helper -----------------
-def get_category_corrections(col_name: str, unique_values: List[str]) -> Dict[str, Any]:
-    """
-    Returns:
-    {
-      "valid": [list of canonical values],
-      "invalid": [
-         { "original": "...", "suggestion": "...", "confidence": "high|medium|low", "reason": "..." },
-         ...
-      ]
-    }
-    """
+
+# Category inconsistency helper
+def get_category_corrections(col_name: str, unique_values: List[str]):
     if not unique_values:
         return {"valid": [], "invalid": []}
 
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        _log("⚠ GROQ_API_KEY not set – skipping category LLM.")
+        print("⚠️ GROQ_API_KEY not set – skipping category LLM.")
         return {"valid": [], "invalid": []}
 
-    # create per-call client (safer) or reuse: using local client with API key
-    try:
-        client = ChatGroq(model=LLM_MODEL, api_key=api_key, temperature=0.2)
-    except Exception as e:
-        _log("Failed to create ChatGroq client in category helper:", e)
-        return {"valid": [], "invalid": []}
-
-    values_json = json.dumps(unique_values, ensure_ascii=False)
+    # Use a dedicated LLM instance using explicit api_key to avoid confusion
+    cat_llm = ChatGroq(model="llama-3.1-8b-instant", api_key=api_key, temperature=0.2)
 
     prompt = ChatPromptTemplate.from_template(
         """
-You are a data cleaning assistant.
+    You are a data cleaning assistant.
 
-You are given:
-- A column name: "{col_name}"
-- A JSON array of unique values from this column: {values_json}
+    You are given:
+    - A column name: "{col_name}"
+    - A JSON array of unique values from this column: {values_json}
 
-1. Decide which values are valid categories (canonical / clean values).
-2. For the remaining values, mark them as invalid and propose:
-   - suggestion: corrected category (string)
-   - confidence: "high" | "medium" | "low"
-   - reason: short explanation (<= 1 sentence)
+    1. Decide which values are valid categories (canonical / clean values).
+    2. For the remaining values, mark them as invalid and propose:
+    - suggestion: corrected category (string)
+    - confidence: "high" | "medium" | "low"
+    - reason: short explanation (<= 1 sentence)
 
-Return STRICTLY valid JSON with this shape:
+    Return STRICTLY valid JSON with this shape:
 
-{
-  "valid": ["category1", "category2", ...],
-  "invalid": [
-    {
-      "original": "raw value",
-      "suggestion": "cleaned category",
-      "confidence": "high",
-      "reason": "why this was changed"
-    }
-    ...
-  ]
-}
+    {{
+        "valid": ["category1", "category2", ...],
+        "invalid": [
+            {{
+                "original": "raw value",
+                "suggestion": "cleaned category",
+                "confidence": "high",
+                "reason": "why this was changed"
+            }},
+            ...
+        ]
+    }}
         """.strip()
     )
 
+
+    messages = prompt.format_messages(
+        col_name=col_name, values_json=json.dumps(unique_values, ensure_ascii=False)
+    )
+
     try:
-        messages = prompt.format_messages(col_name=col_name, values_json=values_json)
-        resp = client.invoke(messages)
-        raw_text = getattr(resp, "content", str(resp)).strip()
+        resp = cat_llm.invoke(messages)
+        raw = getattr(resp, "content", str(resp))
+
+        # Extract the first JSON object from the response robustly
+        obj_text = _extract_json_object(raw)
+        if not obj_text:
+            raise ValueError("No JSON object found in category LLM output")
+
+        data = _safe_json_load(obj_text)
+
+        # Validate shape
+        valid = data.get("valid", [])
+        invalid = data.get("invalid", [])
+        if not isinstance(valid, list):
+            valid = []
+        if not isinstance(invalid, list):
+            invalid = []
+
+        cleaned_invalid = []
+        for item in invalid:
+            try:
+                original = str(item.get("original", "")).strip()
+                if not original:
+                    continue
+                cleaned_invalid.append(
+                    {
+                        "original": original,
+                        "suggestion": str(item.get("suggestion", "")).strip(),
+                        "confidence": str(item.get("confidence", "medium")).lower(),
+                        "reason": str(item.get("reason", "")).strip(),
+                    }
+                )
+            except Exception as e:
+                print("Category invalid item error:", e, item)
+
+        return {"valid": valid, "invalid": cleaned_invalid}
+
     except Exception as e:
-        _log("Category LLM call failed:", e)
-        return {"valid": [], "invalid": []}
-
-    parsed = parse_json_safe(raw_text)
-    if parsed is None or not isinstance(parsed, dict):
-        _log("Category JSON error: could not parse JSON. RAW:", raw_text[:1000])
-        return {"valid": [], "invalid": []}
-
-    # Normalize results
-    valid = parsed.get("valid", [])
-    invalid = parsed.get("invalid", [])
-
-    if not isinstance(valid, list):
-        valid = []
-    if not isinstance(invalid, list):
-        invalid = []
-
-    cleaned_invalid = []
-    for it in invalid:
+        # Log the full LLM text for debugging
+        print("Category LLM call failed:", e)
         try:
-            if not isinstance(it, dict):
-                continue
-            original = str(it.get("original", "")).strip()
-            if not original:
-                continue
-            suggestion = str(it.get("suggestion", "")).strip()
-            confidence = str(it.get("confidence", "medium")).lower()
-            if confidence not in ("high", "medium", "low"):
-                confidence = "medium"
-            reason = str(it.get("reason", "")).strip()
-            cleaned_invalid.append({
-                "original": original,
-                "suggestion": suggestion,
-                "confidence": confidence,
-                "reason": reason
-            })
-        except Exception as e:
-            _log("Category invalid item error:", e, it)
-
-    return {"valid": valid, "invalid": cleaned_invalid}
+            print("Raw LLM output (truncated):", raw[:2000])
+        except Exception:
+            pass
+        return {"valid": [], "invalid": []}
